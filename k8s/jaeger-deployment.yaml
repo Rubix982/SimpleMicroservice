@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.41
+          env:
+            - name: COLLECTOR_ZIPKIN_HTTP_PORT
+              value: "9411"
+            - name: JAEGER_AGENT_HOST
+              value: "localhost"  # This can be set to the pod IP or a service name
+            - name: JAEGER_AGENT_PORT
+              value: "6831"
+            - name: JAEGER_SAMPLER_TYPE
+              value: "const"
+            - name: JAEGER_SAMPLER_PARAM
+              value: "1"
+          ports:
+            - containerPort: 5775
+              protocol: UDP
+            - containerPort: 6831
+              protocol: UDP
+            - containerPort: 6832
+              protocol: UDP
+            - containerPort: 5778
+            - containerPort: 16686
+            - containerPort: 14268
+            - containerPort: 14250
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+spec:
+  type: NodePort
+  ports:
+    - port: 16686         # Port for Jaeger UI
+      targetPort: 16686
+      nodePort: 30002     # Change this to a valid NodePort
+    - port: 6831          # Port for the Jaeger agent
+      targetPort: 6831
+      protocol: UDP
+  selector:
+    app: jaeger

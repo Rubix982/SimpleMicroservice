@@ -20,10 +20,10 @@ $ curl localhost:8999/order
 ## Kubernetes
 
 ```shell
-cd k8s/ && kubectl apply -f deployment.yaml
+cd k8s/ && chmod +x deploy-dev.sh && ./deploy-dev.sh
 ```
 
-Then visit `localhost:8999` in your browser.
+Then visit `localhost:30001` in your browser.
 
 ```shell
 $ curl http://localhost:30001/order
