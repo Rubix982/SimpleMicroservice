@@ -32,9 +32,12 @@ func main() {
 	})
 	log.SetLevel(log.InfoLevel)
 
-	// Set up HTTP server
+	// Set up HTTP server with timeouts
 	server := &http.Server{
-		Addr: ":8080",
+		Addr:              ":8080",
+		ReadHeaderTimeout: 1 * time.Second,  // Timeout for reading request headers
+		ReadTimeout:       10 * time.Second, // Timeout for reading the entire request
+		WriteTimeout:      10 * time.Second, // Timeout for writing responses
 	}
 
 	// Set up signal handling for graceful shutdown
