@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -21,6 +25,15 @@ var orderChannel = make(chan Order, 10)
 var wg sync.WaitGroup
 
 func main() {
+	// Set up the server
+	server := &http.Server{
+		Addr: ":8080",
+	}
+
+	// Set up graceful shutdown handling
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+
 	// Start worker goroutines to process orders.
 	for i := 1; i <= 3; i++ { // 3 workers
 		go processOrders(i)
@@ -28,11 +41,33 @@ func main() {
 
 	// Start HTTP server
 	http.HandleFunc("/order", handleOrder)
-	fmt.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
 
-	// Close the channel after use.
-	defer close(orderChannel)
+	// Run server in a separate goroutine
+	go func() {
+		fmt.Println("Server is starting on :8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe failed: %v", err)
+		}
+	}()
+
+	// Listen for shutdown signal
+	<-shutdownChan
+	fmt.Println("Shutdown signal received, stopping server...")
+
+	// Create a context with a timeout to ensure graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Shutdown the server
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server Shutdown Failed:%+v", err)
+	}
+
+	// Close the order channel and wait for all orders to be processed
+	close(orderChannel)
+	wg.Wait()
+
+	fmt.Println("Server gracefully stopped.")
 }
 
 func handleOrder(w http.ResponseWriter, r *http.Request) {
