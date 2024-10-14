@@ -67,7 +67,7 @@ func main() {
 			"event": "startup",
 			"port":  8080,
 		}).Info("Server is starting")
-		if err := server.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.WithError(err).Fatal("Server failed")
 		}
 	}()
