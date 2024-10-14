@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -91,7 +92,7 @@ func main() {
 			"event": "startup",
 			"port":  8080,
 		}).Info("Server is starting")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
 			log.WithError(err).Fatal("Server failed")
 		}
 	}()
@@ -126,14 +127,15 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 	order := Order{ID: time.Now().Nanosecond(), Amount: 99.99}
 	orderChannel <- order
 
-	log.WithFields(log.Fields{
+	logCtx := log.WithContext(ctx)
+	logCtx.WithFields(log.Fields{
 		"orderID": order.ID,
 		"amount":  order.Amount,
 		"client":  r.RemoteAddr,
 	}).Info("Received new order")
 
-	// Log the order received message
-	log.WithFields(log.Fields{
+	// Log the order received a message
+	logCtx.WithContext(ctx).WithFields(log.Fields{
 		"orderID": order.ID,
 	}).Info("Order received")
 }
@@ -153,14 +155,15 @@ func processOrders(workerID int) {
 			ctx, span := tracer.Start(context.Background(), "processOrders")
 			defer span.End()
 
-			log.WithFields(log.Fields{
+			logCtx := log.WithContext(ctx)
+			logCtx.WithFields(log.Fields{
 				"workerID": workerID,
 				"orderID":  order.ID,
 			}).Info("Processing order")
 
 			time.Sleep(2 * time.Second) // Simulate order processing
 
-			log.WithFields(log.Fields{
+			logCtx.WithFields(log.Fields{
 				"workerID": workerID,
 				"orderID":  order.ID,
 			}).Info("Completed order")
