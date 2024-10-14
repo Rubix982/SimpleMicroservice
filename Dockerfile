@@ -13,8 +13,14 @@ COPY go.mod go.sum ./
 # Download and cache dependencies
 RUN go mod download
 
+# Install gosec for security scanning
+RUN go install github.com/securego/gosec/v2/cmd/gosec@latest
+
 # Copy the rest of the application source code (including main.go)
 COPY . .
+
+# Run the security scanner
+RUN gosec ./...
 
 # Build the Go application into a binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/microservice main.go

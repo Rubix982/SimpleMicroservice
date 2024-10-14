@@ -29,3 +29,19 @@ Then visit `localhost:8999` in your browser.
 $ curl http://localhost:30001/order
 > Order received: 274822750
 ```
+
+## Gosec
+
+Reveal security-related issues in the codebase.
+
+```shell
+gosec ./...
+```
+
+## GolangCI-Lint
+
+Lint the codebase.
+
+```shell
+golangci-lint run
+```
