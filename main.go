@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -133,7 +132,10 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 		"client":  r.RemoteAddr,
 	}).Info("Received new order")
 
-	fmt.Fprintf(w, "Order received: %d\n", order.ID)
+	// Log the order received message
+	log.WithFields(log.Fields{
+		"orderID": order.ID,
+	}).Info("Order received")
 }
 
 // processOrders processes orders in the orderChannel
@@ -149,6 +151,8 @@ func processOrders(workerID int) {
 
 			// Start a new span for processing orders
 			ctx, span := tracer.Start(context.Background(), "processOrders")
+			defer span.End()
+
 			log.WithFields(log.Fields{
 				"workerID": workerID,
 				"orderID":  order.ID,
@@ -160,7 +164,6 @@ func processOrders(workerID int) {
 				"workerID": workerID,
 				"orderID":  order.ID,
 			}).Info("Completed order")
-			span.End()
 
 		case <-done:
 			log.WithFields(log.Fields{
@@ -174,7 +177,7 @@ func processOrders(workerID int) {
 // HandleHealthCheck provides a health check endpoint
 func HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	log.Info("Health check requested")
 }
 
 // loggingMiddleware wraps handlers for request logging
