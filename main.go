@@ -11,6 +11,14 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	trace2 "go.opentelemetry.io/otel/sdk/trace"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Order represents a simple order request.
@@ -25,12 +33,33 @@ var (
 	done         = make(chan struct{})  // Channel to signal workers to stop
 )
 
+const serviceName = "order-service"
+
+var tracer trace.Tracer
+
 func main() {
 	// Set up logrus
+	ctx := context.Background()
 	log.SetFormatter(&log.JSONFormatter{
 		TimestampFormat: time.RFC3339,
 	})
 	log.SetLevel(log.InfoLevel)
+
+	// Initialize OpenTelemetry
+	exporter, err := otlptracegrpc.New(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create the exporter: %v", err)
+	}
+
+	tp := trace2.NewTracerProvider(
+		trace2.WithBatcher(exporter),
+		trace2.WithResource(resource.NewWithAttributes(
+			resource.Default().String(),
+			attribute.String("service.name", serviceName),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	tracer = tp.Tracer(serviceName)
 
 	// Set up HTTP server with timeouts
 	server := &http.Server{
@@ -53,6 +82,9 @@ func main() {
 	// Register HTTP handlers
 	http.HandleFunc("/order", loggingMiddleware(HandleOrder))
 	http.HandleFunc("/health", loggingMiddleware(HandleHealthCheck))
+
+	// Wrap the server handler with OpenTelemetry
+	server.Handler = otelhttp.NewHandler(http.DefaultServeMux, "HTTP Server")
 
 	// Run the server in a goroutine
 	go func() {
@@ -88,6 +120,10 @@ func main() {
 
 // HandleOrder processes incoming order requests
 func HandleOrder(w http.ResponseWriter, r *http.Request) {
+	// Start a new span for the order handling
+	ctx, span := tracer.Start(r.Context(), "HandleOrder")
+	defer span.End()
+
 	order := Order{ID: time.Now().Nanosecond(), Amount: 99.99}
 	orderChannel <- order
 
@@ -110,6 +146,9 @@ func processOrders(workerID int) {
 			if !ok {
 				return // Channel closed
 			}
+
+			// Start a new span for processing orders
+			ctx, span := tracer.Start(context.Background(), "processOrders")
 			log.WithFields(log.Fields{
 				"workerID": workerID,
 				"orderID":  order.ID,
@@ -121,6 +160,7 @@ func processOrders(workerID int) {
 				"workerID": workerID,
 				"orderID":  order.ID,
 			}).Info("Completed order")
+			span.End()
 
 		case <-done:
 			log.WithFields(log.Fields{
