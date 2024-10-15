@@ -16,7 +16,6 @@ import (
 	"SimpleMicroserviceProject/telemetry"
 
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func main() {
@@ -57,9 +56,6 @@ func main() {
 		telemetry.GetWg().Add(1)
 		go controllers.ProcessOrders(ctx, i)
 	}
-
-	// Wrap the server handler with OpenTelemetry
-	server.Handler = otelhttp.NewHandler(http.DefaultServeMux, "HTTP Server")
 
 	// Run the server in a goroutine
 	go func() {
