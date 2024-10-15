@@ -18,3 +18,9 @@ spec:
           image: localhost:5000/my-go-microservice:latest # Update this if you're using a different image name
           ports:
             - containerPort: 8080
+          env:
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              valueFrom:
+                configMapKeyRef:
+                  name: otel-config  # Name of your ConfigMap
+                  key: OTEL_RESOURCE_ATTRIBUTES  # Key in the ConfigMap

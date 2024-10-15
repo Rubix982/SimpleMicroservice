@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-config
+  namespace: simple-microservice-project
+data:
+  OTEL_RESOURCE_ATTRIBUTES: "service.name=smp,service.version=0.1.0"
