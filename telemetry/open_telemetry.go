@@ -3,17 +3,21 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
@@ -45,7 +49,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tp
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := NewTraceProvider(time.Second)
+	tracerProvider, err := NewTraceProvider(5 * time.Second)
 	if err != nil {
 		handleErr(err)
 		return
@@ -83,17 +87,26 @@ func newPropagator() propagation.TextMapPropagator {
 }
 
 func NewTraceProvider(batchTimeout time.Duration) (*trace.TracerProvider, error) {
-	traceExporter, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint())
+	// Create an OTLP exporter to send traces to the Jaeger backend via OTLP
+	client := otlptracehttp.NewClient(
+		otlptracehttp.WithEndpoint("jaeger-collector.default.svc.cluster.local:4318"), // Use the OTLP HTTP endpoint for Jaeger
+		otlptracehttp.WithInsecure(), // Disable TLS for local testing
+	)
+
+	traceExporter, err := otlptrace.New(context.Background(), client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create OTLP exporter: %v", err)
 	}
 
 	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter,
-			// Default is 5s. Set to 1s for demonstrative purposes.
-			trace.WithBatchTimeout(batchTimeout)),
+		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(batchTimeout)),
+		trace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("simple-microservice-service"),
+			semconv.ServiceVersionKey.String("1.0.0"),
+		)),
 	)
+	otel.SetTracerProvider(traceProvider)
 	return traceProvider, nil
 }
 

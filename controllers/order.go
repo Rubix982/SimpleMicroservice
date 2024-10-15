@@ -37,9 +37,13 @@ func init() {
 
 // HandleOrder processes incoming order requests
 func HandleOrder(w http.ResponseWriter, r *http.Request) {
-	ctx, span := orderServiceTracer.Start(r.Context(), "HandleOrder")
+	ctx, span := orderServiceTracer.Start(r.Context(), "HandleOrder /order")
 	defer span.End()
 
+	span.AddEvent("Processing order", trace.WithAttributes(
+		attribute.String("method", r.Method),
+		attribute.String("url", r.URL.Path)),
+	)
 	order := models.Order{ID: time.Now().Nanosecond(), Amount: 99.99}
 	telemetry.GetOrderChannel() <- order
 
@@ -54,6 +58,10 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 	orderCountAttr := attribute.Int("order.count", 1)
 	span.SetAttributes(orderCountAttr)
 	orderCount.Add(ctx, 1, metric.WithAttributes(orderCountAttr))
+	span.AddEvent("Completed order", trace.WithAttributes(
+		attribute.String("method", r.Method),
+		attribute.String("url", r.URL.Path)),
+	)
 }
 
 // ProcessOrders processes orders in the orderChannel
