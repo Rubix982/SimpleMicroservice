@@ -67,7 +67,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tp
 	shutdownFunctions = append(shutdownFunctions, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	// Set up logger provider.
+	// Set up log provider.
 	loggerProvider, err := newLoggerProvider()
 	if err != nil {
 		handleErr(err)

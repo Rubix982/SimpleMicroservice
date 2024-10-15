@@ -13,18 +13,17 @@ import (
 	"SimpleMicroserviceProject/constants"
 	"SimpleMicroserviceProject/controllers"
 	"SimpleMicroserviceProject/middleware"
+	"SimpleMicroserviceProject/models"
+	"SimpleMicroserviceProject/pkg/log"
 	"SimpleMicroserviceProject/telemetry"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	models.ConnectDatabase()
+	logger := log.InitLogger()
+
 	// Set up logrus
 	ctx := context.Background()
-	log.SetFormatter(&log.JSONFormatter{
-		TimestampFormat: time.RFC3339,
-	})
-	log.SetLevel(log.InfoLevel)
 
 	// Set up OpenTelemetry.
 	openTelemetryShutdown, tp, err := telemetry.SetupOTelSDK(ctx)
@@ -59,18 +58,17 @@ func main() {
 
 	// Run the server in a goroutine
 	go func() {
-		log.WithFields(log.Fields{
-			"event": "startup",
-			"port":  8080,
-		}).Info("Server is starting")
+		logger.WithField("event", "startup").
+			WithField("port", 8080).
+			Info("Server is starting")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.WithError(err).Fatal("Server failed")
+			logger.WithError(err).Fatal("Server failed")
 		}
 	}()
 
 	// Wait for shutdown signal
 	<-shutdownChan
-	log.Info("Shutdown signal received, stopping server...")
+	logger.Info("Shutdown signal received, stopping server...")
 
 	// Gracefully shut down the server with a timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -78,7 +76,7 @@ func main() {
 
 	// Shutdown the server
 	if err := server.Shutdown(ctx); err != nil {
-		log.WithError(err).Fatal("Server Shutdown Failed")
+		logger.WithError(err).Fatal("Server Shutdown Failed")
 	}
 
 	// Signal workers to stop and wait for them to finish processing
@@ -86,5 +84,5 @@ func main() {
 	close(telemetry.GetOrderChannel())
 	telemetry.GetWg().Wait()
 
-	log.Info("Server gracefully stopped.")
+	logger.Info("Server gracefully stopped.")
 }
