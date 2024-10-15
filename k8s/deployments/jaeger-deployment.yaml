@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jaeger
+  namespace: simple-microservice-project
 spec:
   replicas: 1
   selector:
@@ -37,20 +38,3 @@ spec:
             - containerPort: 16686
             - containerPort: 14268
             - containerPort: 14250
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: jaeger
-spec:
-  type: NodePort
-  ports:
-    - port: 16686         # Port for Jaeger UI
-      targetPort: 16686
-      nodePort: 30002     # Change this to a valid NodePort
-    - port: 6831          # Port for the Jaeger agent
-      targetPort: 6831
-      protocol: UDP
-  selector:
-    app: jaeger

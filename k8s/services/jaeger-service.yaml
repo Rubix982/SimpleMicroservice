@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: simple-microservice-project
+spec:
+  type: NodePort
+  ports:
+    - name: jaeger-ui
+      port: 16686
+      targetPort: 16686
+      nodePort: 30002
+    - name: jaeger-agent
+      port: 6831
+      targetPort: 6831
+      protocol: UDP
+  selector:
+    app: jaeger
