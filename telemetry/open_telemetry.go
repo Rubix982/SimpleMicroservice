@@ -25,12 +25,14 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tp
 	// The errors from the calls are joined.
 	// Each registered cleanup will be invoked once.
 	shutdown = func(ctx context.Context) error {
-		var err error
+		var joinedErr error
 		for _, fn := range shutdownFunctions {
-			err = errors.Join(err, fn(ctx))
+			if err := fn(ctx); err != nil {
+				joinedErr = errors.Join(joinedErr, err)
+			}
 		}
 		shutdownFunctions = nil
-		return err
+		return joinedErr
 	}
 
 	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
@@ -43,7 +45,7 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, tp
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := NewTraceProvider()
+	tracerProvider, err := NewTraceProvider(time.Second)
 	if err != nil {
 		handleErr(err)
 		return
@@ -80,7 +82,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func NewTraceProvider() (*trace.TracerProvider, error) {
+func NewTraceProvider(batchTimeout time.Duration) (*trace.TracerProvider, error) {
 	traceExporter, err := stdouttrace.New(
 		stdouttrace.WithPrettyPrint())
 	if err != nil {
@@ -90,7 +92,7 @@ func NewTraceProvider() (*trace.TracerProvider, error) {
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(traceExporter,
 			// Default is 5s. Set to 1s for demonstrative purposes.
-			trace.WithBatchTimeout(time.Second)),
+			trace.WithBatchTimeout(batchTimeout)),
 	)
 	return traceProvider, nil
 }
