@@ -1,50 +1,36 @@
-package main
+package src
 
 import (
 	"context"
 	"errors"
-	"net"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"SimpleMicroserviceProject/constants"
-	"SimpleMicroserviceProject/controllers"
-	"SimpleMicroserviceProject/middleware"
-	"SimpleMicroserviceProject/models"
+	"SimpleMicroserviceProject/pkg/db"
 	"SimpleMicroserviceProject/pkg/log"
-	"SimpleMicroserviceProject/telemetry"
+	"SimpleMicroserviceProject/pkg/middleware"
+	"SimpleMicroserviceProject/pkg/telemetry"
 )
 
 func main() {
-	models.ConnectDatabase()
+	db.ConnectDatabase()
 	logger := log.InitLogger()
-
-	// Set up logrus
 	ctx := context.Background()
 
-	// Set up OpenTelemetry.
-	openTelemetryShutdown, tp, err := telemetry.SetupOTelSDK(ctx)
-	if err != nil {
+	if err := setupOpenTelemetry(ctx); err != nil {
+		logger.WithError(err).Fatal("Failed to setup OpenTelemetry")
 		return
 	}
-	telemetry.SetTracer(tp.Tracer(constants.ServiceName))
-	// Handle shutdown properly so nothing leaks.
-	defer func() {
-		err = errors.Join(err, openTelemetryShutdown(context.Background()))
-	}()
 
 	// Set up HTTP server with timeouts
-	server := &http.Server{
-		Addr:              ":8080",
-		BaseContext:       func(_ net.Listener) context.Context { return ctx },
-		ReadHeaderTimeout: 1 * time.Second,  // Timeout for reading request headers
-		ReadTimeout:       10 * time.Second, // Timeout for reading the entire request
-		WriteTimeout:      10 * time.Second, // Timeout for writing responses
-		Handler:           middleware.NewHTTPHandler(),
-	}
+	server := middleware.GetHttpServer(ctx, []middleware.RouteMeta{
+		middleware.GetRouteMeta("/order", HandleOrder, "Get random order"),
+		middleware.GetRouteMeta("/health", HandleHealthCheck, "Health check"),
+	})
 
 	// Set up signal handling for graceful shutdown
 	shutdownChan := make(chan os.Signal, 1)
@@ -52,8 +38,8 @@ func main() {
 
 	// Start worker goroutines to process orders
 	for i := 1; i <= 3; i++ {
-		telemetry.GetWg().Add(1)
-		go controllers.ProcessOrders(ctx, i)
+		GetWg().Add(1)
+		go ProcessOrders(ctx, i)
 	}
 
 	// Run the server in a goroutine
@@ -66,8 +52,25 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
-	<-shutdownChan
+	<-shutdownChan // Wait for shutdown signal
+	handleShutdown(logger, ctx, server)
+}
+
+func setupOpenTelemetry(ctx context.Context) error {
+	// Set up OpenTelemetry.
+	openTelemetryShutdown, tp, err := telemetry.SetupOTelSDK(ctx)
+	if err != nil {
+		return err
+	}
+	SetTracer(tp.Tracer(ServiceName))
+	// Handle shutdown properly so nothing leaks.
+	defer func() {
+		err = errors.Join(err, openTelemetryShutdown(context.Background()))
+	}()
+	return nil
+}
+
+func handleShutdown(logger *logrus.Logger, ctx context.Context, server *http.Server) {
 	logger.Info("Shutdown signal received, stopping server...")
 
 	// Gracefully shut down the server with a timeout
@@ -80,9 +83,9 @@ func main() {
 	}
 
 	// Signal workers to stop and wait for them to finish processing
-	close(telemetry.GetDone())
-	close(telemetry.GetOrderChannel())
-	telemetry.GetWg().Wait()
+	close(GetDone())
+	close(GetOrderChannel())
+	GetWg().Wait()
 
 	logger.Info("Server gracefully stopped.")
 }

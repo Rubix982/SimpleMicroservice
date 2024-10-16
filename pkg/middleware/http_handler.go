@@ -1,17 +1,43 @@
 package middleware
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"time"
-
-	"SimpleMicroserviceProject/controllers"
 
 	log "github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func NewHTTPHandler() http.Handler {
+type RouteMeta struct {
+	Route       string
+	Handler     http.HandlerFunc
+	Description string
+}
+
+func GetRouteMeta(route string, handler http.HandlerFunc, description string) RouteMeta {
+	return RouteMeta{
+		Route:       route,
+		Handler:     handler,
+		Description: description,
+	}
+}
+
+func GetHttpServer(ctx context.Context, routeMeta []RouteMeta) *http.Server {
+	server := &http.Server{
+		Addr:              ":8080",
+		BaseContext:       func(_ net.Listener) context.Context { return ctx },
+		ReadHeaderTimeout: 1 * time.Second,  // Timeout for reading request headers
+		ReadTimeout:       10 * time.Second, // Timeout for reading the entire request
+		WriteTimeout:      10 * time.Second, // Timeout for writing responses
+		Handler:           NewHTTPHandler(routeMeta),
+	}
+	return server
+}
+
+func NewHTTPHandler(routeMeta []RouteMeta) http.Handler {
 	mux := http.NewServeMux()
 
 	// handleFunc is a replacement for mux.HandleFunc
@@ -23,12 +49,12 @@ func NewHTTPHandler() http.Handler {
 	}
 
 	// Register HTTP handlers
-	handleFunc("/order", loggingMiddleware(controllers.HandleOrder))
-	handleFunc("/health", loggingMiddleware(controllers.HandleHealthCheck))
+	for _, route := range routeMeta {
+		handleFunc(route.Route, loggingMiddleware(route.Handler))
+	}
 
 	// Add HTTP instrumentation for the whole server.
-	handler := otelhttp.NewHandler(mux, "/")
-	return handler
+	return otelhttp.NewHandler(mux, "/")
 }
 
 // loggingMiddleware wraps handlers for request logging

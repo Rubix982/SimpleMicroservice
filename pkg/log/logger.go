@@ -12,6 +12,6 @@ func InitLogger() *logrus.Logger {
 		TimestampFormat: time.RFC3339,
 	})
 	logger.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.InfoLevel)
+	logger.SetLevel(logrus.InfoLevel)
 	return logger
 }

@@ -1,13 +1,9 @@
-package controllers
+package src
 
 import (
 	"context"
 	"net/http"
 	"time"
-
-	"SimpleMicroserviceProject/constants"
-	"SimpleMicroserviceProject/models"
-	"SimpleMicroserviceProject/telemetry"
 
 	log "github.com/sirupsen/logrus"
 
@@ -19,9 +15,9 @@ import (
 )
 
 var (
-	orderServiceTracer = otel.Tracer(constants.ServiceName)
-	orderServiceLogger = otelslog.NewLogger(constants.ServiceName)
-	orderServiceMeter  = otel.Meter(constants.ServiceName)
+	orderServiceTracer = otel.Tracer(ServiceName)
+	orderServiceLogger = otelslog.NewLogger(ServiceName)
+	orderServiceMeter  = otel.Meter(ServiceName)
 	orderCount         metric.Int64Counter
 )
 
@@ -44,8 +40,8 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 		attribute.String("method", r.Method),
 		attribute.String("url", r.URL.Path)),
 	)
-	order := models.Order{ID: time.Now().Nanosecond(), Amount: 99.99}
-	telemetry.GetOrderChannel() <- order
+	order := Order{ID: time.Now().Nanosecond(), Amount: 99.99}
+	GetOrderChannel() <- order
 
 	orderServiceLogger.InfoContext(ctx, "Received new order", "result", log.Fields{
 		"orderID": order.ID,
@@ -66,18 +62,18 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 
 // ProcessOrders processes orders in the orderChannel
 func ProcessOrders(ctx context.Context, workerID int) {
-	defer telemetry.GetWg().Done()
+	defer GetWg().Done()
 
 	for {
 		select {
-		case order, ok := <-telemetry.GetOrderChannel():
+		case order, ok := <-GetOrderChannel():
 			if !ok {
 				return // Channel closed
 			}
 
 			// Start a new span for processing orders
 			var span trace.Span
-			ctx, span = telemetry.GetTracer().Start(ctx, "processOrders")
+			ctx, span = GetTracer().Start(ctx, "processOrders")
 			defer span.End()
 
 			logCtx := log.WithContext(ctx)
@@ -93,7 +89,7 @@ func ProcessOrders(ctx context.Context, workerID int) {
 				"orderID":  order.ID,
 			}).Info("Completed order")
 
-		case <-telemetry.GetDone():
+		case <-GetDone():
 			log.WithFields(log.Fields{
 				"workerID": workerID,
 			}).Info("Shutting down worker")

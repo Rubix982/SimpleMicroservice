@@ -1,4 +1,4 @@
-package models
+package src
 
 // Order represents a simple order request.
 type Order struct {

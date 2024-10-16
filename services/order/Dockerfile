@@ -4,6 +4,9 @@ FROM golang:1.22-alpine AS builder
 # Enable Go modules
 ENV GO111MODULE=on
 
+# Tag the image with the name of the service
+LABEL service=order
+
 # Set the working directory inside the container
 WORKDIR /app
 
