@@ -29,7 +29,7 @@ RUN gosec ./...
 COPY ./build/user-service-linux-amd64.bin /app/user-service
 
 # ---- Stage 2: Final minimal image ----
-FROM alpine:3.18
+FROM alpine:3.20
 
 # Create a non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
