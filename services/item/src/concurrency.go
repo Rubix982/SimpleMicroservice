@@ -1,25 +1,24 @@
 package src
 
 import (
-	"sync"
-
 	"go.opentelemetry.io/otel/trace"
+	"sync"
 )
 
 var (
 	tracer       trace.Tracer
-	orderChannel = make(chan Order, 10) // Buffered channel for orders
-	wg           *sync.WaitGroup        // WaitGroup to synchronize goroutines
-	done         = make(chan struct{})  // Channel to signal workers to stop
+	orderChannel = make(chan Item, 10) // Buffered channel for orders
+	wg           *sync.WaitGroup       // WaitGroup to synchronize goroutines
+	done         = make(chan struct{}) // Channel to signal workers to stop
 )
 
 func GetTracer() trace.Tracer {
 	return tracer
 }
 
-func GetOrderChannel() chan Order {
+func GetItemChannel() chan Item {
 	if orderChannel == nil {
-		orderChannel = make(chan Order, 10) // Buffered channel for orders
+		orderChannel = make(chan Item, 10) // Buffered channel for orders
 	}
 	return orderChannel
 }
@@ -42,7 +41,7 @@ func SetTracer(t trace.Tracer) {
 	tracer = t
 }
 
-func SetOrderChannel(oc chan Order) {
+func SetOrderChannel(oc chan Item) {
 	orderChannel = oc
 }
 

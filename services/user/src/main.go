@@ -29,7 +29,7 @@ func main() {
 
 	// Set up HTTP server with timeouts
 	server := middleware.GetHttpServer(ctx, []middleware.RouteMeta{
-		middleware.GetRouteMeta("/order", HandleOrder, "Get random order"),
+		middleware.GetRouteMeta("/user", HandleUser, "Get random user"),
 		middleware.GetRouteMeta("/health", HandleHealthCheck, "Health check"),
 	})
 
@@ -37,10 +37,10 @@ func main() {
 	shutdownChan := make(chan os.Signal, 1)
 	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
 
-	// Start worker goroutines to process orders
+	// Start worker goroutines to process users
 	for i := 1; i <= 3; i++ {
 		GetWg().Add(1)
-		go ProcessOrders(ctx, i)
+		go ProcessUsers(ctx, i)
 	}
 
 	// Run the server in a goroutine
@@ -85,7 +85,7 @@ func handleShutdown(logger *logrus.Logger, ctx context.Context, server *http.Ser
 
 	// Signal workers to stop and wait for them to finish processing
 	close(GetDone())
-	close(GetOrderChannel())
+	close(GetUserChannel())
 	GetWg().Wait()
 
 	logger.Info("Server gracefully stopped.")

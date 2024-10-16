@@ -5,35 +5,20 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"SimpleMicroserviceProject/pkg/telemetry"
 
-	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+
+	log "github.com/sirupsen/logrus"
 )
 
-var (
-	orderServiceTracer = otel.Tracer(ServiceName)
-	orderServiceLogger = otelslog.NewLogger(ServiceName)
-	orderServiceMeter  = otel.Meter(ServiceName)
-	orderCount         metric.Int64Counter
-)
-
-func init() {
-	var err error
-	orderCount, err = orderServiceMeter.Int64Counter("order.incr",
-		metric.WithDescription("The number of rolls by roll value"),
-		metric.WithUnit("{incr}"))
-	if err != nil {
-		panic(err)
-	}
-}
+var orderInstrument = telemetry.GetNewInstrumentation(ServiceName)
 
 // HandleOrder processes incoming order requests
 func HandleOrder(w http.ResponseWriter, r *http.Request) {
-	ctx, span := orderServiceTracer.Start(r.Context(), "HandleOrder /order")
+	ctx, span := orderInstrument.Tracer.Start(r.Context(), "HandleOrder /order")
 	defer span.End()
 
 	span.AddEvent("Processing order", trace.WithAttributes(
@@ -43,7 +28,7 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 	order := Order{ID: time.Now().Nanosecond(), Amount: 99.99}
 	GetOrderChannel() <- order
 
-	orderServiceLogger.InfoContext(ctx, "Received new order", "result", log.Fields{
+	orderInstrument.Logger.InfoContext(ctx, "Received new order", "result", log.Fields{
 		"orderID": order.ID,
 		"amount":  order.Amount,
 		"client":  r.RemoteAddr,
@@ -53,7 +38,7 @@ func HandleOrder(w http.ResponseWriter, r *http.Request) {
 
 	orderCountAttr := attribute.Int("order.count", 1)
 	span.SetAttributes(orderCountAttr)
-	orderCount.Add(ctx, 1, metric.WithAttributes(orderCountAttr))
+	orderInstrument.Counter.Add(ctx, 1, metric.WithAttributes(orderCountAttr))
 	span.AddEvent("Completed order", trace.WithAttributes(
 		attribute.String("method", r.Method),
 		attribute.String("url", r.URL.Path)),

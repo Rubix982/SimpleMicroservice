@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -17,8 +19,36 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+
+	metric2 "go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	trace2 "go.opentelemetry.io/otel/trace"
 )
+
+type Instrumentation struct {
+	Logger  *slog.Logger
+	Tracer  trace2.Tracer
+	Meter   metric2.Meter
+	Counter metric2.Int64Counter
+}
+
+func GetNewInstrumentation(serviceName string) *Instrumentation {
+	instrument := &Instrumentation{
+		Logger: otelslog.NewLogger(serviceName),
+		Tracer: otel.Tracer(serviceName),
+		Meter:  otel.Meter(serviceName),
+	}
+
+	var err error
+	instrument.Counter, err = instrument.Meter.Int64Counter(fmt.Sprintf("%s.incr", serviceName),
+		metric2.WithDescription(fmt.Sprintf("The number of %v added", serviceName)),
+		metric2.WithUnit("{incr}"))
+	if err != nil {
+		panic(err)
+	}
+
+	return instrument
+}
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
 // If it does not return an error, make sure to call shutdown for proper cleanup.
