@@ -3,7 +3,7 @@ go 1.22
 use (
 	services/order
 	services/user
-	./services/item
+	services/item
 	services/payment
 	pkg
 )

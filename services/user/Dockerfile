@@ -11,7 +11,7 @@ LABEL service=order
 WORKDIR /app
 
 # Copy go.mod and go.sum first for better caching of dependencies
-COPY go.mod go.sum ./
+COPY ./services/user/go.mod ./services/user/go.sum ./
 
 # Download and cache dependencies
 RUN go mod download
@@ -25,8 +25,8 @@ COPY . .
 # Run the security scanner
 RUN gosec ./...
 
-# Build the Go application into a binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/microservice main.go
+# Copy the built binary from the build folder
+COPY ./build/user-service-linux-amd64.bin /app/user-service
 
 # ---- Stage 2: Final minimal image ----
 FROM alpine:3.18
@@ -38,7 +38,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 
 # Copy the built binary from the previous stage
-COPY --from=builder /app/microservice /app/microservice
+COPY --from=builder /app/user-service /app/microservice
 
 # Use the non-root user
 USER appuser

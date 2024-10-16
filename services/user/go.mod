@@ -1,7 +1,6 @@
-module UserService
+module github.com/Rubix982/SimpleMicroserviceProject/services/user
 
 require (
-	SimpleMicroserviceProject/pkg v0.0.0-00010101000000-000000000000
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/bridges/otelslog v0.6.0
 	go.opentelemetry.io/otel v1.31.0
@@ -42,7 +41,5 @@ require (
 	gorm.io/driver/postgres v1.5.9 // indirect
 	gorm.io/gorm v1.25.12 // indirect
 )
-
-replace SimpleMicroserviceProject/pkg => ../../pkg
 
 go 1.22

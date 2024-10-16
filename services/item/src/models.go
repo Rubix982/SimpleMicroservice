@@ -1,6 +1,6 @@
 package src
 
-import "OrderService/src"
+import "github.com/Rubix982/SimpleMicroserviceProject/services/order/src"
 
 type Item struct {
 	ID      int

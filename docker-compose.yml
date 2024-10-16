@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  item:
+    build:
+      context: .
+      dockerfile: services/item/Dockerfile
+    volumes:
+      - ./pkg:/app/pkg
+
+  order:
+    build:
+      context: .
+      dockerfile: services/order/Dockerfile
+    volumes:
+      - ./pkg:/app/pkg
+
+  payment:
+    build:
+      context: .
+      dockerfile: services/payment/Dockerfile
+    volumes:
+      - ./pkg:/app/pkg
+
+  user:
+    build:
+      context: .
+      dockerfile: services/user/Dockerfile
+    volumes:
+      - ./pkg:/app/pkg
