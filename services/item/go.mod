@@ -2,7 +2,7 @@ module github.com/Rubix982/SimpleMicroserviceProject/services/item
 
 require (
 	github.com/sirupsen/logrus v1.9.3
-	go.opentelemetry.io/contrib/bridges/otelslog v0.6.0
+	go.opentelemetry.io/contrib/bridges/otelslog v0.8.0
 	go.opentelemetry.io/otel v1.31.0
 	go.opentelemetry.io/otel/metric v1.31.0
 	go.opentelemetry.io/otel/trace v1.31.0
