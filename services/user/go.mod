@@ -3,14 +3,15 @@ module github.com/Rubix982/SimpleMicroserviceProject/services/user
 require (
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/bridges/otelslog v0.6.0
-	go.opentelemetry.io/otel v1.31.0
-	go.opentelemetry.io/otel/metric v1.31.0
-	go.opentelemetry.io/otel/trace v1.31.0
+	go.opentelemetry.io/otel v1.46.0
+	go.opentelemetry.io/otel/metric v1.46.0
+	go.opentelemetry.io/otel/trace v1.46.0
 )
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
@@ -42,4 +43,4 @@ require (
 	gorm.io/gorm v1.25.12 // indirect
 )
 
-go 1.22
+go 1.25.0
